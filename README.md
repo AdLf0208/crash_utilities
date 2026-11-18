@@ -1,80 +1,67 @@
-# Crash Utilities for Horizon — server-admin commands
+# Crash Utilities — a Horizon port
 
-A native Horizon port of [Crash Utilities](https://github.com/Darkere/CrashUtilities)
-9.0.4 (MIT). It puts the admin side of a server on the command line, under the
-roots `/cu` and `/crashutilities`, at permission level 2:
+**Crash Utilities** is a Minecraft mod. Minecraft Mod Utilities for Server Owner. This repository is a **port of it to [Horizon](https://github.com/horizon-rust/horizon)**, the Rust engine for Minecraft Java 26.3. It carries the complete source of the port plus the content files it ships, and installs as a single `.hmod` package.
 
-| Command | What it does |
+Upstream: [Darkere/CrashUtilities](https://github.com/Darkere/CrashUtilities) — licence **MIT**.
+
+| | |
 |---|---|
-| `/cu e remove items` | remove every item entity in the level |
-| `/cu e remove <type\|hostile>` | remove every entity of that kind (a mob, item, orb, minecart or boat id), or every monster |
-| `/cu e entityData <type>` | print each matching entity's saved NBT, one chat line each (cut to 300 characters) |
-| `/cu e find <name>` | list the entities whose **custom** name holds `<name>` |
-| `/cu callItemClear` | count the level's ground items and, at/above the configured limit, clear them after a countdown |
-| `/cu tp <overworld\|the_nether\|the_end> <x> <y> <z>` | teleport yourself, in or across dimensions |
-| `/cu unstuck` | lift yourself to the highest safe standing spot in your column |
-| `/cu help` | the commands above |
+| Upstream mod | Crash Utilities ([source](https://github.com/Darkere/CrashUtilities)) |
+| Ported to | Horizon 0b14f8a, Minecraft Java 26.3, mod API `0.2` |
+| Package | `crashutilities.hmod` (install it with the Horizon launcher) |
+| Licence | **MIT** — the upstream mod's licence; see [Licence and credit](#licence-and-credit) |
 
-`e`, `entities` and `entity` are all accepted as the entity alias.
+## What this port implements
 
-The command tree's literals are lowercase, as vanilla's dispatcher requires, so
-the two mixed-case names of the original are spelled **`callitemclear`** and
-**`entitydata`** at the prompt (tab completion offers them). Every other spelling,
-argument and message is the original's.
+- **The command literals are lowercase.** The dispatcher parses before a mod is asked, and its
+- **The self-teleports use `EntityRef::teleport_to_level`.** 0.1.0 queued an
+- **The config file is the game's, not the port's.** Same path and keys; `register_configs`
+- **The safe-spot scan asks the state's collision shape**, not a "full cube" fact: a slab, a
+- **The level comes from the invocation.** `execute in <dim> run cu e remove items` acts on that
+- **The console and command blocks can run the level-wide commands** (help, `e …`,
+- **No log lines.** Config parse warnings are dropped instead of logged.
 
-## The item clear (upstream's `callItemClear`)
+## Not yet ported
 
-The periodic task and the manual command share one rule set, from
-`config/crashutilities.toml` (written with these defaults when the file is missing
-— a world's `serverconfig/` copy, when present, wins):
+- `e remove regex`: a regex filter needs a crate (`regex`), and a port may not add
+- `blockentity *`: no block-entity enumeration/removal API.
+- `i *` (inventory read/remove/open), `memoryCheck`, `chunks *`: no APIs
+- `tp <player>` / offline playerdata: no playerdata load/save API. Only the
+- `unstuck <name>` / overworld spawn: no shared-spawn API; the port's safe-spot
+- ~~Config reload~~: **closed by the SDK format** — `config_reloading` re-reads the
+- `cu help` text is English literals (a native package has no lang pipeline for a
+- **No 0.2.0 in-game run.** `tools/e2e.sh` now needs a **launcher-built** game
 
-```toml
-enabled = false          # upstream's default: clears are off until an admin turns them on
-timer = 30               # minutes between background checks (0 = every 10 seconds)
-maximum = 1000           # a clear starts when the level holds at least this many items
-warnings = "5,20"        # chat warnings, seconds before the clear
-title = true             # the countdown title
-titletext = "ITEMCLEAR INCOMING!"
-warningtext = "ITEMCLEAR IN % SECONDS"
+## Installing
+
+1. Install the [Horizon launcher](https://github.com/horizon-rust/horizon/releases) (0.2.70 or newer).
+2. Add `crashutilities.hmod` to the instance's mods.
+3. The package is pinned to a specific Horizon build; the launcher checks that pin.
+
+## Licence and credit
+
+Crash Utilities was created by its upstream authors; the code, models and assets in the original mod
+remain theirs and are used here under **MIT**. The Rust in this repository is a clean-room
+rewrite for Horizon, not a translation of the original source.
+
+- `LICENSE` — the upstream licence text.
+- `LICENSE-NOTICE.md` — what this port carries and where it came from.
+- The upstream project: https://github.com/Darkere/CrashUtilities
+
+## Technical details
+
+```
+horizon-mod.toml   package manifest (id, version, api, [native] pin)
+Cargo.toml         the crate; depends on `horizon-mod-api` from the fetched SDK
+src/               lib.rs (the one `impl Hooks`), runtime.rs (pure logic + tests), glue
+assets/ data/      the content the package ships
+tools/             content generators and the e2e scenario
 ```
 
-At the clear's due tick the level is **re-counted** and only cleared when it is
-still above the limit (`Item Clear prevented. Only N items on the ground`
-otherwise); a clear is never started twice at once. Editing the file mid-game
-re-reads it and restarts the period, as upstream restarts its task on a reload.
+- Build: `cargo horizon-mod build` (packages; it does not compile against the game).
+- Test: `cargo test`, `cargo clippy --all-targets -- -D warnings`.
+- In-game: `ports/tools/launcher-game.sh run crashutilities` in the campaign tree, or install the
+  `.hmod` and play; the harness scenario is `tools/e2e.sh`.
 
-## Not in this port
-
-The original's inventory, chunk, memory and block-entity readouts are not ported:
-the API surface for them (another player's inventory write, opening a real
-inventory as a menu, heap sampling, chunk/ticket enumeration, a block-entity
-list) does not exist at this pin. The full list is in [notes.md](notes.md#gaps),
-with the shape each would need.
-
-## Building and installing
-
-This is one flat SDK package (`api = "0.2"`): `horizon-mod.toml`, `Cargo.toml`,
-`src/` (the one `impl mod_api::Hooks` plus the pure `runtime`), and nothing to
-carry. It builds against the pinned SDK — nightly
-`0b14f8acfd97fa2c750e42795249dcc981178ca4`, mixins
-`e59da9094f0c2fdda6c627fe9eff22dec6a906f0`, for 26.3:
-
-```sh
-cargo test --offline                                   # the pure rules
-cargo clippy --all-targets -- -D warnings
-cargo fmt --check
-rm -f Cargo.lock && cargo horizon-mod build            # -> target/horizon-mod/crashutilities.hmod
-cargo horizon-mod check crashutilities.hmod
-cargo horizon-mod fits crashutilities.hmod --build nightly
-horizon-launcher native-build . --instance <instance> --trust-native-code
-```
-
-`tools/e2e.sh` is the in-game scenario; it needs the launcher-built
-`horizon-client` (set `GAME=`, and optionally `CONTROL_GAME=` for the
-differential and `SELFTEST=1` for the run that must fail).
-
-## Licence
-
-MIT, from the original mod (Copyright (c) Darkere); see [LICENSE](LICENSE) and
-[LICENSE-NOTICE.md](LICENSE-NOTICE.md). Local-only until the maintainer approves
-publishing (ARCHITECTURE.md §8).
+This repository is generated from the campaign's port at `ports/crashutilities/`; the port's own
+`notes.md` is the full record (decisions, traps, evidence).
