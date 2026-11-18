@@ -1,0 +1,32 @@
+# Crash Utilities for Horizon — one flat SDK package (mod API 0.2).
+#
+# Server-admin commands for the command line: `/cu e remove items|hostile|<type>`,
+# `/cu e entityData <type>`, `/cu e find <name>`, `/cu callItemClear` (the configured
+# ground-item countdown), `/cu tp <dimension> <x> <y> <z>`, `/cu unstuck`, and `/cu help`,
+# under both upstream roots `/cu` and `/crashutilities`, at permission level 2. Ported from
+# Crash Utilities 9.0.4 (Darkere/CrashUtilities, MIT); local-only until the maintainer
+# approves publishing (ARCHITECTURE.md §8).
+id = "crashutilities"
+name = "Crash Utilities"
+# The port's own version, not upstream's 9.0.4: a resubmission is always a new version (the
+# retired .hnmod bundle was 0.1.0).
+version = "0.2.0"
+description = """Server-admin housekeeping commands for Horizon, from Crash Utilities 9.0.4: count and clear the world's ground items on a configured countdown, remove or dump entities by type, group or name, teleport yourself across dimensions, and get yourself out of a block. Every command sits under the roots /cu and /crashutilities at permission level 2. The inventory, chunk, block-entity and memory readout commands of the original are not ported (the API surface for them does not exist here)."""
+authors = ["Darkere (upstream)", "Horizon native mod contributors"]
+# A native mod: Rust in src/, compiled by the launcher against the game build [native] pins.
+# The id is the resource namespace and the only identity: Cargo's package name and version
+# are not the mod's.
+api = "0.2"
+# "both" is the installation side, not the hook's: an integrated server belongs to the
+# client installation, so a LAN host or a single-player world (where an admin wants /cu)
+# needs both. A dedicated server is "server".
+side = "both"
+# The one shared value every manifest carries ("May add blocks, items, mob effects and entity
+# types"). This mod registers no content and no declaration, so nothing is claimed beyond
+# what the schema requires; the field is not optional.
+capabilities = ["registries"]
+
+[native]
+game = "26.3"
+horizon = "0b14f8acfd97fa2c750e42795249dcc981178ca4"
+mixins = "e59da9094f0c2fdda6c627fe9eff22dec6a906f0"
